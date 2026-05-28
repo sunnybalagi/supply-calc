@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音乐内容供给测算器</title>
+<style>
+  :root{
+    --blue:#2563EB; --green:#16A34A; --ink:#1f2933; --muted:#6b7280;
+    --line:#e5e7eb; --bg:#ffffff; --soft:#f7f8fa; --bluebg:rgba(37,99,235,.07); --greenbg:rgba(22,163,74,.10);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--soft);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;
+    font-size:14px;line-height:1.5;}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
+  h1{font-size:22px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 22px;}
+  .grid{display:grid;grid-template-columns:360px 1fr;gap:24px;align-items:start;}
+  @media(max-width:880px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .card h2{font-size:14px;margin:0 0 12px;letter-spacing:.02em;color:var(--ink);}
+  .grp{margin-bottom:16px;}
+  .grp:last-child{margin-bottom:0;}
+  .grp-title{font-size:12px;font-weight:700;color:var(--blue);margin:0 0 8px;text-transform:none;}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;}
+  .row label{color:var(--ink);font-size:13px;flex:1;}
+  .row .hint{color:var(--muted);font-size:11px;}
+  .subnote{color:var(--muted);font-size:11px;line-height:1.4;margin:-3px 0 8px;}
+  .rsec{margin-top:10px;}
+  .rsec h4{font-size:12px;margin:0 0 5px;color:var(--ink);font-weight:700;}
+  .rrow{display:flex;gap:6px;align-items:center;margin-bottom:4px;}
+  .rrow input.rname{flex:1;min-width:0;padding:4px 7px;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--ink);}
+  .rrow input.rsong,.rrow input.rweek,.rrow input.rpct{width:54px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;font-size:12px;text-align:right;color:var(--ink);}
+  .rrow .del{cursor:pointer;color:#b91c1c;font-size:13px;border:none;background:none;padding:0 2px;line-height:1;}
+  .raddbtn{font-size:11px;color:var(--blue);cursor:pointer;border:1px dashed #c7d2fe;background:none;border-radius:6px;padding:4px 9px;margin-top:3px;}
+  .raddbtn:hover{background:var(--bluebg);}
+  .rhead{font-size:10px;color:var(--muted);margin-bottom:2px;}
+  input[type=number]{width:84px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;
+    font-size:13px;text-align:right;font-variant-numeric:tabular-nums;background:#fff;color:var(--ink);}
+  input[type=number]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.15);}
+  table.seg{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.seg th,table.seg td{padding:4px 4px;text-align:center;border-bottom:1px solid var(--line);}
+  table.seg th{color:var(--muted);font-weight:600;font-size:11px;}
+  table.seg td:first-child,table.seg th:first-child{text-align:left;}
+  table.seg input{width:60px;}
+  .btn{margin-top:6px;padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:8px;
+    cursor:pointer;font-size:12.5px;color:var(--ink);}
+  .btn:hover{background:var(--soft);}
+  /* results */
+  .heads{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+  .head{background:var(--greenbg);border:1px solid rgba(22,163,74,.4);border-radius:12px;padding:16px 18px;}
+  .head .k{font-size:12.5px;color:#15803d;font-weight:600;}
+  .head .v{font-size:30px;font-weight:800;color:var(--green);line-height:1.1;margin-top:4px;}
+  .head .u{font-size:13px;color:#15803d;font-weight:600;}
+  .chain{position:relative;}
+  .step{background:var(--bluebg);border:1px solid rgba(37,99,235,.45);border-radius:10px;
+    padding:11px 14px;display:flex;align-items:center;gap:12px;}
+  .step .n{width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:12px;
+    font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .step .t{flex:1;}
+  .step .t .lab{font-size:13px;font-weight:600;}
+  .step .t .det{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .step .val{font-size:19px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+  .op{color:var(--muted);font-size:11.5px;font-style:italic;padding:5px 0 5px 34px;}
+  .laststep{background:var(--greenbg);border-color:rgba(22,163,74,.5);}
+  .laststep .n{background:var(--green);} .laststep .val{color:var(--green);}
+  .mini{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px;}
+  .mini table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .mini th,.mini td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;}
+  .mini th:first-child,.mini td:first-child{text-align:left;color:var(--muted);}
+  .mini caption{text-align:left;font-weight:700;font-size:12px;margin-bottom:6px;color:var(--ink);}
+  .warn{color:#b45309;font-size:12px;margin-top:8px;display:none;}
+  .foot{color:var(--muted);font-size:11.5px;margin-top:20px;line-height:1.6;}
+  b.num{font-variant-numeric:tabular-nums;}
+  .divider{height:1px;background:var(--line);margin:20px 0;}
+  .seclabel{font-size:12px;font-weight:700;color:var(--blue);margin:0 0 10px;letter-spacing:.02em;}
+  details.grp{margin-bottom:16px;}
+  details.grp > summary, details.foldcard > summary{cursor:pointer;list-style:none;outline:none;}
+  details.grp > summary::-webkit-details-marker, details.foldcard > summary::-webkit-details-marker{display:none;}
+  details.grp > summary.grp-title{margin-bottom:0;}
+  details.grp[open] > summary.grp-title{margin-bottom:8px;}
+  details.grp > summary.grp-title::before{content:"▸  ";font-size:10px;}
+  details.grp[open] > summary.grp-title::before{content:"▾  ";}
+  details.foldcard{margin-top:14px;}
+  details.foldcard > summary{font-size:13px;font-weight:600;color:var(--ink);}
+  details.foldcard > summary::before{content:"▸  ";color:var(--muted);font-size:11px;}
+  details.foldcard[open] > summary::before{content:"▾  ";}
+  .head.sm .v{font-size:22px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>音乐内容供给测算器</h1>
+  <p class="sub">改任意参数，下方实时刷新。逻辑：预算 → 日新增 → DAU → 曝光需求 → 按语言拆 → ÷ 分发集中程度 → 内容池 → 起步建库 + 每日新增。分发集中程度=每首歌日均曝光次数（实测约 40）。</p>
+
+  <div class="grid">
+    <!-- ===== INPUTS ===== -->
+    <div class="card">
+      <h2>输入参数</h2>
+
+      <div class="grp">
+        <div class="grp-title">全局</div>
+        <div class="row"><label>总预算 / 天 ($)</label><input type="number" id="budget" value="10000" step="500"></div>
+        <div class="row"><label>非收藏曝光占比</label><input type="number" id="nonfav" value="0.90" step="0.05" min="0" max="1"></div>
+        <div class="row"><label>非收藏去重窗口 (天)</label><input type="number" id="W" value="7" step="1"></div>
+        <div class="row"><label>分发集中程度</label><input type="number" id="conc" value="40" step="5" min="1"></div>
+        <div class="subnote">每首歌日均曝光次数 · 实测 MX 42 / PH 38 · 越高越集中、需备内容越少</div>
+        <div class="row"><label>留存幂律衰减 b</label><input type="number" id="b" value="0.7" step="0.05"></div>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title">初始 DAU（每国上线时活跃 → 冷启动建库）</div>
+        <div class="subnote">默认取实测 feed 曝光 UV（5/26）：MX 3843 / PH 1504 / BR 1706</div>
+        <div class="row"><label>MX 初始 DAU</label><input type="number" id="mx_dau0" value="3843" step="100"></div>
+        <div class="row"><label>PH 初始 DAU</label><input type="number" id="ph_dau0" value="1504" step="100"></div>
+        <div class="row"><label>BR 初始 DAU</label><input type="number" id="br_dau0" value="1706" step="100"></div>
+      </div>
+
+      <div class="grp">
+        <div class="grp-title">分市场 / 语言段</div>
+        <table class="seg">
+          <thead><tr><th>段</th><th>预算%</th><th>CPA$</th><th>D1%</th><th>人均听歌数</th></tr></thead>
+          <tbody>
+            <tr><td>MX-es</td>
+              <td><input type="number" id="mx_share" value="40" step="5"></td>
+              <td><input type="number" id="mx_cpa" value="0.41" step="0.01"></td>
+              <td><input type="number" id="mx_d1" value="10" step="1"></td>
+              <td><input type="number" id="mx_w" value="4.0" step="0.1"></td></tr>
+            <tr><td>PH-en</td>
+              <td><input type="number" id="ph_share" value="20" step="5"></td>
+              <td><input type="number" id="ph_cpa" value="0.28" step="0.01"></td>
+              <td><input type="number" id="ph_d1" value="10" step="1"></td>
+              <td><input type="number" id="ph_w" value="5.4" step="0.1"></td></tr>
+            <tr><td>BR-pt</td>
+              <td><input type="number" id="br_share" value="40" step="5"></td>
+              <td><input type="number" id="br_cpa" value="0.41" step="0.01"></td>
+              <td><input type="number" id="br_d1" value="10" step="1"></td>
+              <td><input type="number" id="br_w" value="4.0" step="0.1"></td></tr>
+          </tbody>
+        </table>
+        <div class="warn" id="shareWarn">⚠ 预算占比之和 ≠ 100%</div>
+      </div>
+
+      <details class="grp">
+        <summary class="grp-title">语言池映射 (本地% / EN%)</summary>
+        <div class="row"><label>MX → 本地 es</label><input type="number" id="mx_local" value="80" step="5"><span class="hint">余补 EN</span></div>
+        <div class="row"><label>BR → 本地 pt</label><input type="number" id="br_local" value="80" step="5"><span class="hint">余补 EN</span></div>
+        <div class="row"><label>PH → EN</label><input type="number" id="ph_en" value="100" step="5"><span class="hint">PH 即 EN</span></div>
+      </details>
+
+      <details class="grp">
+        <summary class="grp-title">进阶 (新鲜度 / 良品率 / 成熟期)</summary>
+        <div class="row"><label>近A天"新歌"占 feed (f)</label><input type="number" id="f" value="0.20" step="0.05"></div>
+        <div class="row"><label>"新鲜"窗口 A (天)</label><input type="number" id="Awin" value="7" step="1"></div>
+        <div class="row"><label>内容池刷新率 / 天</label><input type="number" id="refresh" value="0.02" step="0.01"></div>
+        <div class="row"><label>良品率 (上架/生产)</label><input type="number" id="yield" value="0.50" step="0.05"></div>
+        <div class="row"><label>稳态成熟期 (天)</label><input type="number" id="days" value="90" step="10"></div>
+        <div class="subnote">用户盘从初始 DAU 爬到稳态约需多少天；只影响"稳态建库会长到多大"与扩池均摊。</div>
+      </details>
+
+      <details class="grp">
+        <summary class="grp-title">电台 (Radio) · 可增删</summary>
+        <div class="row"><label>跨台复用率</label><input type="number" id="r_reuse" value="0.10" step="0.05"></div>
+        <div class="subnote">每台填：台名 · 库存(首) · 周更(首/周)。通用台跨国共享(产一次)，特有台按国家各产。</div>
+        <div id="radioEditor"></div>
+      </details>
+
+      <details class="grp">
+        <summary class="grp-title">曲风分配 · feed (可增删)</summary>
+        <div class="subnote">每个语言池下按曲风填占比(%)，和应=100%。定不了就保留"待定 100%"，占比×语言池总量自动出各曲风建库/每日更新。</div>
+        <div id="genreEditor"></div>
+      </details>
+
+      <button class="btn" id="reset">重置默认</button>
+    </div>
+
+    <!-- ===== RESULTS ===== -->
+    <div>
+      <!-- 总计：先看答案 -->
+      <div class="heads">
+        <div class="head" style="background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.4)">
+          <div class="k" style="color:#1e40af">冷启动建库（feed+电台·上线先备）</div><div class="v" id="t_build" style="color:var(--blue)">–</div><div class="u" style="color:#1e40af">首</div></div>
+        <div class="head" style="background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.4)">
+          <div class="k" style="color:#1e40af">每日补充（feed+电台）</div><div class="v" id="t_daily" style="color:var(--blue)">–</div><div class="u" style="color:#1e40af">首 / 天</div></div>
+      </div>
+      <div class="subnote" id="t_split"></div>
+      <button class="btn" id="exportCsv" style="margin-top:8px;">⬇ 导出排产表 (Excel · 分 sheet)</button>
+
+      <div class="divider"></div>
+
+      <!-- feed 部分 -->
+      <div class="seclabel">feed 内容</div>
+      <div class="heads">
+        <div class="head sm"><div class="k">feed 冷启动建库</div><div class="v" id="o_build">–</div><div class="u">首</div></div>
+        <div class="head sm"><div class="k">feed 每日补充</div><div class="v" id="o_daily">–</div><div class="u">首 / 天</div></div>
+      </div>
+
+      <details class="foldcard card">
+        <summary>计算过程 · feed 7 步链路</summary>
+        <div class="chain" style="margin-top:12px;">
+          <div class="step"><div class="n">1</div><div class="t"><div class="lab">投放预算</div></div><div class="val" id="s1">–</div></div>
+          <div class="op">÷ 各市场 CPA</div>
+          <div class="step"><div class="n">2</div><div class="t"><div class="lab">日新增注册用户</div></div><div class="val" id="s2">–</div></div>
+          <div class="op">× 留存累积（1 + D1 × RetSum，<span id="op_ret">–</span>）</div>
+          <div class="step"><div class="n">3</div><div class="t"><div class="lab">稳态 DAU</div></div><div class="val" id="s3">–</div></div>
+          <div class="op">× 人均曝光作品 × 非收藏占比</div>
+          <div class="step"><div class="n">4</div><div class="t"><div class="lab">feed 日曝光需求</div><div class="det">作品·人次 / 天</div></div><div class="val" id="s4">–</div></div>
+          <div class="op">按语言拆：es=MX本地 / pt=BR本地 / en=PH+MX·BR 的 EN 份额（跨市场共享）</div>
+          <div class="step"><div class="n">5</div><div class="t"><div class="lab">三语言池需求</div><div class="det" id="s5det">–</div></div><div class="val" id="s5">–</div></div>
+          <div class="op">÷ 分发集中程度（每首歌日均曝光次数；越高越集中、需内容越少）</div>
+          <div class="step"><div class="n">6</div><div class="t"><div class="lab">内容池（建库目标）</div><div class="det" id="s6det">–</div></div><div class="val" id="s6">–</div></div>
+          <div class="op">每日新增 = MAX(刷新×池, 新鲜度 f×需求÷(分发集中程度×A)) ÷ 良品率</div>
+          <div class="step laststep"><div class="n">7</div><div class="t"><div class="lab">每日新增（生产）</div><div class="det" id="s7det">–</div></div><div class="val" id="s7">–</div></div>
+        </div>
+      </details>
+
+      <div class="mini">
+        <div class="card">
+          <table><caption>各市场 · 稳态</caption>
+            <thead><tr><th>段</th><th>日新增</th><th>DAU</th><th>曝光需求</th></tr></thead>
+            <tbody id="mktBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <table><caption>语言内容池 · 稳态建库 + 每日补充</caption>
+            <thead><tr><th>语言池</th><th>需求/天</th><th>建库(首)</th><th>每日新增</th></tr></thead>
+            <tbody id="langBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <table><caption>feed 曲风排产（占比 × 语言池）</caption>
+          <thead><tr><th>语言 / 曲风</th><th>占比</th><th>冷启动(首)</th><th>稳态建库(首)</th><th>每日补充</th></tr></thead>
+          <tbody id="genreBody"></tbody>
+        </table>
+        <div class="subnote" id="genreWarn" style="display:none;color:#b45309;">⚠ 有语言池曲风占比之和 ≠ 100%</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 电台部分 -->
+      <div class="seclabel">电台 (Radio)</div>
+      <div class="card">
+        <table><caption>建库 + 每日更新</caption>
+          <thead><tr><th>部分</th><th>台数</th><th>建库(首)</th><th>每日更新</th></tr></thead>
+          <tbody id="radioBody"></tbody>
+        </table>
+      </div>
+
+      <div class="foot" id="foot"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const ids = ["budget","nonfav","W","conc","b","days","mx_share","mx_cpa","mx_d1","mx_w",
+  "ph_share","ph_cpa","ph_d1","ph_w","br_share","br_cpa","br_d1","br_w",
+  "mx_dau0","ph_dau0","br_dau0",
+  "mx_local","br_local","ph_en","f","Awin","refresh","yield","r_reuse"];
+const defaults = {};
+ids.forEach(i=>defaults[i]=$(i).value);
+
+const fmt = n => Math.round(n).toLocaleString("en-US");
+const fmt1 = n => (Math.round(n*10)/10).toLocaleString("en-US");
+let LAST = {pool:{es:0,pt:0,en:0}, poolInit:{es:0,pt:0,en:0}, dailyL:{es:0,pt:0,en:0}};
+
+function calc(){
+  const v = id => parseFloat($(id).value)||0;
+  const budget=v("budget"), nonfav=v("nonfav"), W=v("W"), reuse=Math.max(v("conc"),1), b=v("b"), days=v("days");
+  const f=v("f"), Awin=v("Awin"), refresh=v("refresh"), yld=v("yield");
+
+  // RetSum = sum_{k=1}^{days-1} k^(-b)
+  let RetSum=0; for(let k=1;k<=days-1;k++) RetSum+=Math.pow(k,-b);
+  const mult = d1 => 1 + d1*RetSum;
+
+  const seg = {
+    MX:{share:v("mx_share")/100, cpa:v("mx_cpa"), d1:v("mx_d1")/100, w:v("mx_w")},
+    PH:{share:v("ph_share")/100, cpa:v("ph_cpa"), d1:v("ph_d1")/100, w:v("ph_w")},
+    BR:{share:v("br_share")/100, cpa:v("br_cpa"), d1:v("br_d1")/100, w:v("br_w")}
+  };
+  // language map per market: {es,pt,en}
+  const mxEn=1-v("mx_local")/100, brEn=1-v("br_local")/100;
+  const map = {
+    MX:{es:v("mx_local")/100, pt:0, en:mxEn},
+    PH:{es:0, pt:0, en:v("ph_en")/100},
+    BR:{es:0, pt:v("br_local")/100, en:brEn}
+  };
+
+  let totalNew=0, totalDAU=0, totalDem=0;
+  for(const k in seg){
+    const s=seg[k];
+    s.bud = s.share*budget;
+    s.N = s.cpa>0 ? s.bud/s.cpa : 0;
+    s.DAU = s.N*mult(s.d1);
+    s.dem = s.DAU*s.w*nonfav;
+    totalNew+=s.N; totalDAU+=s.DAU; totalDem+=s.dem;
+  }
+  // language demand (总量, 仅作背景展示)
+  const langDem = {es:0,pt:0,en:0};
+  for(const k in seg){ for(const L of ["es","pt","en"]) langDem[L]+=seg[k].dem*map[k][L]; }
+  // 稳态: 每语言池 = 该语言日曝光需求 ÷ 复用强度
+  const pool = {};
+  for(const L of ["es","pt","en"]) pool[L]=langDem[L]/reuse;
+  const build = pool.es+pool.pt+pool.en;   // 稳态建库
+  // 冷启动: 用各国初始 DAU
+  const dau0={MX:v("mx_dau0"),PH:v("ph_dau0"),BR:v("br_dau0")};
+  const demInit={es:0,pt:0,en:0};
+  for(const k in seg){ const di=dau0[k]*seg[k].w*nonfav; for(const L of ["es","pt","en"]) demInit[L]+=di*map[k][L]; }
+  const poolInit={}; for(const L of ["es","pt","en"]) poolInit[L]=demInit[L]/reuse;
+  const buildCold=poolInit.es+poolInit.pt+poolInit.en;   // 冷启动建库
+  // 每日补充(按语言) = [MAX(新鲜度,刷新) + 扩池(稳态−冷启动)/成熟期] ÷ 良品率
+  const novL={}, refL={}, rampL={}, dailyL={};
+  for(const L of ["es","pt","en"]){
+    novL[L]=f*langDem[L]/(reuse*Awin);
+    refL[L]=refresh*pool[L];
+    rampL[L]=Math.max(0,(pool[L]-poolInit[L])/Math.max(days,1));
+    dailyL[L]= yld>0 ? (Math.max(novL[L],refL[L])+rampL[L])/yld : 0;
+  }
+  const daily = dailyL.es+dailyL.pt+dailyL.en;
+  const novelty = novL.es+novL.pt+novL.en;
+  const refreshFlow = refL.es+refL.pt+refL.en;
+  const ramp = rampL.es+rampL.pt+rampL.en;
+
+  // render
+  $("o_build").textContent=fmt(buildCold);
+  $("o_daily").textContent=fmt(daily);
+  $("s1").textContent="$"+fmt(budget)+" / 天";
+  $("s2").textContent=fmt(totalNew)+" 人/天";
+  $("op_ret").textContent="RetSum="+ (Math.round(RetSum*100)/100);
+  $("s3").textContent=fmt(totalDAU);
+  $("s4").textContent="≈ "+fmt(totalDem);
+  $("s5").textContent="";
+  $("s5det").textContent="es "+fmt(langDem.es)+" · pt "+fmt(langDem.pt)+" · en "+fmt(langDem.en);
+  $("s6").textContent=fmt(build)+" 首";
+  $("s6det").textContent="es "+fmt(pool.es)+" · pt "+fmt(pool.pt)+" · en "+fmt(pool.en);
+  $("s7").textContent=fmt(daily)+" 首/天";
+  $("s7det").textContent="新鲜度需上架 "+fmt(novelty)+" · 刷新 "+fmt(refreshFlow)+" · ÷良品率";
+
+  const mkt=$("mktBody"); mkt.innerHTML="";
+  for(const k of ["MX","PH","BR"]){ const s=seg[k];
+    mkt.innerHTML+=`<tr><td>${k}</td><td><b class="num">${fmt(s.N)}</b></td><td><b class="num">${fmt(s.DAU)}</b></td><td><b class="num">${fmt(s.dem)}</b></td></tr>`; }
+  mkt.innerHTML+=`<tr style="font-weight:700"><td>合计</td><td>${fmt(totalNew)}</td><td>${fmt(totalDAU)}</td><td>${fmt(totalDem)}</td></tr>`;
+
+  const lb=$("langBody"); lb.innerHTML="";
+  const scope={es:"MX本地",pt:"BR本地",en:"PH+MX/BR的EN"};
+  for(const L of ["es","pt","en"])
+    lb.innerHTML+=`<tr><td>${L} <span style="color:#9ca3af;font-size:11px">${scope[L]}</span></td><td><b class="num">${fmt(langDem[L])}</b></td><td><b class="num">${fmt(pool[L])}</b></td><td><b class="num">${fmt(dailyL[L])}</b></td></tr>`;
+  lb.innerHTML+=`<tr style="font-weight:700"><td>合计</td><td></td><td>${fmt(build)}</td><td>${fmt(daily)}</td></tr>`;
+
+  // ===== 电台 Radio (读可增删清单) =====
+  const rReuse=Math.min(Math.max(v("r_reuse"),0),0.95);
+  const sumSong=g=>{let s=0;document.querySelectorAll(`.rsong[data-grp="${g}"]`).forEach(i=>s+=parseFloat(i.value)||0);return s;};
+  const sumWeek=g=>{let s=0;document.querySelectorAll(`.rweek[data-grp="${g}"]`).forEach(i=>s+=parseFloat(i.value)||0);return s;};
+  const cntG=g=>document.querySelectorAll(`.rsong[data-grp="${g}"]`).length;
+  const buildG=g=>sumSong(g)*(1-rReuse);
+  const dailyG=g=>sumWeek(g)/7;   // 周更 → 每日
+  const univBuild=buildG("univ"), mxB=buildG("MX"), phB=buildG("PH"), brB=buildG("BR");
+  const radioBuild=univBuild+mxB+phB+brB;
+  const radioDaily=dailyG("univ")+dailyG("MX")+dailyG("PH")+dailyG("BR");
+  const rb=$("radioBody"); rb.innerHTML="";
+  [["通用台 (跨国共享)","univ",univBuild],["MX 特有","MX",mxB],["PH 特有","PH",phB],["BR 特有","BR",brB]].forEach(([lab,g,bld])=>{
+    rb.innerHTML+=`<tr><td>${lab}</td><td><b class="num">${fmt(cntG(g))}</b></td><td><b class="num">${fmt(bld)}</b></td><td><b class="num">${fmt(dailyG(g))}</b></td></tr>`;
+  });
+  rb.innerHTML+=`<tr style="font-weight:700"><td>电台合计</td><td>${fmt(cntG("univ")+cntG("MX")+cntG("PH")+cntG("BR"))}</td><td>${fmt(radioBuild)}</td><td>${fmt(radioDaily)}</td></tr>`;
+
+  // ===== feed 曲风排产 (冷启动 + 稳态 + 每日补充) =====
+  LAST.pool={es:pool.es,pt:pool.pt,en:pool.en}; LAST.poolInit={es:poolInit.es,pt:poolInit.pt,en:poolInit.en}; LAST.dailyL={es:dailyL.es,pt:dailyL.pt,en:dailyL.en};
+  const scopeL={es:"es (MX本地)",pt:"pt (BR本地)",en:"en (PH+MX/BR)"};
+  const gbd=$("genreBody"); gbd.innerHTML=""; let gWarn=false;
+  ["es","pt","en"].forEach(L=>{
+    const ins=document.querySelectorAll(`.rpct[data-lang="${L}"]`);
+    let psum=0; ins.forEach(i=>psum+=parseFloat(i.value)||0);
+    if(Math.abs(psum-100)>0.5) gWarn=true;
+    ins.forEach(i=>{
+      const pct=parseFloat(i.value)||0, nm=i.closest(".rrow").querySelector(".rname").value;
+      gbd.innerHTML+=`<tr><td><span style="color:#9ca3af;font-size:11px">${L}</span> ${nm}</td><td>${fmt1(pct)}%</td><td><b class="num">${fmt(poolInit[L]*pct/100)}</b></td><td><b class="num">${fmt(pool[L]*pct/100)}</b></td><td><b class="num">${fmt(dailyL[L]*pct/100)}</b></td></tr>`;
+    });
+    gbd.innerHTML+=`<tr style="font-weight:700;background:#f3f4f6"><td>${scopeL[L]} 小计</td><td>${fmt1(psum)}%</td><td>${fmt(poolInit[L])}</td><td>${fmt(pool[L])}</td><td>${fmt(dailyL[L])}</td></tr>`;
+  });
+  gbd.innerHTML+=`<tr style="font-weight:800;background:#d4edda;color:#155724"><td>feed 合计</td><td></td><td>${fmt(buildCold)}</td><td>${fmt(build)}</td><td>${fmt(daily)}</td></tr>`;
+  $("genreWarn").style.display=gWarn?"block":"none";
+
+  // ===== 总计：冷启动建库 + 每日补充 (电台一次性建齐, 不随DAU变) =====
+  const coldTotal = buildCold + radioBuild;
+  const steadyTotal = build + radioBuild;
+  const dailyTotal = daily + radioDaily;
+  $("t_build").textContent = fmt(coldTotal);
+  $("t_daily").textContent = fmt(dailyTotal);
+  $("t_split").innerHTML = `冷启动：feed ${fmt(buildCold)} + 电台 ${fmt(radioBuild)}　｜　稳态建库会长到 <b>${fmt(steadyTotal)}</b>（feed ${fmt(build)} + 电台 ${fmt(radioBuild)}）<br>每日补充：feed ${fmt(daily)}（换血 ${fmt(novelty/(yld||1))} + 扩池 ${fmt(ramp/(yld||1))}）+ 电台 ${fmt(radioDaily)}`;
+
+  // share warning
+  const sumShare=v("mx_share")+v("ph_share")+v("br_share");
+  $("shareWarn").style.display = Math.abs(sumShare-100)>0.1 ? "block" : "none";
+
+  $("foot").innerHTML="每用户约贡献 "+(Math.round(mult(seg.MX.d1)*100)/100)+
+    " 个活跃天（DAU倍数）。EN 池跨市场共享：同一首 EN 歌按 per-user 去重可同时分发给 PH 全量 + MX/BR 的 EN 份额。"+
+    "「每日新增」含新鲜度上新与良品率损耗，DAU 涨满后主要用于上新+换血，不随用户数等比放大。";
+}
+
+// ===== 电台可增删清单 =====
+const radioGroups = [
+  {grp:"univ", title:"通用台（跨国共享，产一次）", items:["睡眠","健身","focus","派对","驾车"]},
+  {grp:"MX", title:"MX 特有", items:["Regional Mexicano","Corridos / Banda","Románticas"]},
+  {grp:"PH", title:"PH 特有", items:[]},
+  {grp:"BR", title:"BR 特有", items:["Gospel","Phonk"]}
+];
+const DEFAULT_SONGS = 100, DEFAULT_WEEK = 5;
+function makeRow(grp,name,songs,week){
+  const div=document.createElement("div"); div.className="rrow";
+  const n=document.createElement("input"); n.type="text"; n.className="rname"; n.value=name;
+  const s=document.createElement("input"); s.type="number"; s.className="rsong"; s.step="10"; s.value=songs; s.title="库存(首)"; s.setAttribute("data-grp",grp);
+  const w=document.createElement("input"); w.type="number"; w.className="rweek"; w.step="1"; w.value=week; w.title="周更(首/周)"; w.setAttribute("data-grp",grp);
+  const d=document.createElement("button"); d.className="del"; d.textContent="✕"; d.title="删除";
+  s.addEventListener("input",calc); w.addEventListener("input",calc);
+  d.addEventListener("click",()=>{ div.remove(); calc(); });
+  div.appendChild(n); div.appendChild(s); div.appendChild(w); div.appendChild(d);
+  return div;
+}
+function renderRadioEditor(){
+  const host=$("radioEditor"); host.innerHTML="";
+  radioGroups.forEach(g=>{
+    const sec=document.createElement("div"); sec.className="rsec";
+    const h=document.createElement("h4"); h.textContent=g.title; sec.appendChild(h);
+    const hd=document.createElement("div"); hd.className="rrow rhead";
+    hd.innerHTML=`<span style="flex:1">台名</span><span style="width:54px;text-align:right">库存</span><span style="width:54px;text-align:right">周更</span><span style="width:16px"></span>`;
+    sec.appendChild(hd);
+    const rows=document.createElement("div");
+    g.items.forEach(nm=>rows.appendChild(makeRow(g.grp,nm,DEFAULT_SONGS,DEFAULT_WEEK)));
+    sec.appendChild(rows);
+    const add=document.createElement("button"); add.className="raddbtn"; add.textContent="+ 添加台";
+    add.addEventListener("click",()=>{ rows.appendChild(makeRow(g.grp,"新电台",DEFAULT_SONGS,DEFAULT_WEEK)); calc(); });
+    sec.appendChild(add);
+    host.appendChild(sec);
+  });
+}
+
+// ===== feed 曲风分配可增删清单 =====
+const genreGroups = [
+  {lang:"es", title:"es (MX本地)", items:[
+    {name:"Corridos Tumbados", pct:61},
+    {name:"Sad Sierreño", pct:9},
+    {name:"Banda / Norteño", pct:10},
+    {name:"Reggaetón / Latin Urban", pct:9},
+    {name:"其他(Cumbia/Pop Español/Rock Latino/Balada/Rap)", pct:11}
+  ]},
+  {lang:"pt", title:"pt (BR本地)", items:[
+    {name:"Gospel", pct:6},
+    {name:"Funk", pct:21},
+    {name:"Sertanejo", pct:61},
+    {name:"Forró", pct:5},
+    {name:"Pagode", pct:6},
+    {name:"其他", pct:1}
+  ]},
+  {lang:"en", title:"en (PH全量 + MX/BR的EN)", items:[
+    {name:"国际抒情情歌 sound-alike", pct:98},
+    {name:"本土英语 R&B", pct:2}
+  ]}
+];
+function makeGenreRow(lang,name,pct){
+  const div=document.createElement("div"); div.className="rrow";
+  const n=document.createElement("input"); n.type="text"; n.className="rname"; n.value=name;
+  const p=document.createElement("input"); p.type="number"; p.className="rpct"; p.step="5"; p.value=pct; p.title="占比%"; p.setAttribute("data-lang",lang);
+  const d=document.createElement("button"); d.className="del"; d.textContent="✕"; d.title="删除";
+  p.addEventListener("input",calc);
+  d.addEventListener("click",()=>{ div.remove(); calc(); });
+  div.appendChild(n); div.appendChild(p); div.appendChild(d);
+  return div;
+}
+function renderGenreEditor(){
+  const host=$("genreEditor"); host.innerHTML="";
+  genreGroups.forEach(g=>{
+    const sec=document.createElement("div"); sec.className="rsec";
+    const h=document.createElement("h4"); h.textContent=g.title; sec.appendChild(h);
+    const hd=document.createElement("div"); hd.className="rrow rhead";
+    hd.innerHTML=`<span style="flex:1">曲风</span><span style="width:54px;text-align:right">占比%</span><span style="width:16px"></span>`;
+    sec.appendChild(hd);
+    const rows=document.createElement("div");
+    (g.items||[{name:"待定",pct:100}]).forEach(it=>rows.appendChild(makeGenreRow(g.lang,it.name,it.pct)));
+    sec.appendChild(rows);
+    const add=document.createElement("button"); add.className="raddbtn"; add.textContent="+ 添加曲风";
+    add.addEventListener("click",()=>{ rows.appendChild(makeGenreRow(g.lang,"新曲风",0)); calc(); });
+    sec.appendChild(add);
+    host.appendChild(sec);
+  });
+}
+
+// ===== 导出 CSV 排产表 =====
+function buildCSV(){
+  const rows=[["类型","分组/语言","名称","参数","建库(首)","每日更新(首)"]];
+  ["es","pt","en"].forEach(L=>{
+    document.querySelectorAll(`.rpct[data-lang="${L}"]`).forEach(i=>{
+      const pct=parseFloat(i.value)||0, nm=i.closest(".rrow").querySelector(".rname").value;
+      rows.push(["feed",L,nm,pct+"%",Math.round(LAST.pool[L]*pct/100),Math.round(LAST.dailyL[L]*pct/100)]);
+    });
+    rows.push(["feed小计",L,"","",Math.round(LAST.pool[L]),Math.round(LAST.dailyL[L])]);
+  });
+  const reuse=Math.min(Math.max(parseFloat($("r_reuse").value)||0,0),0.95);
+  const gn={univ:"通用(共享)",MX:"MX特有",PH:"PH特有",BR:"BR特有"};
+  ["univ","MX","PH","BR"].forEach(g=>{
+    document.querySelectorAll(`.rsong[data-grp="${g}"]`).forEach(s=>{
+      const row=s.closest(".rrow"), nm=row.querySelector(".rname").value;
+      const songs=parseFloat(s.value)||0, week=parseFloat(row.querySelector(".rweek").value)||0;
+      rows.push(["radio",gn[g],nm,week+"首/周",Math.round(songs*(1-reuse)),Math.round(week/7)]);
+    });
+  });
+  return rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+}
+// 每种类型一个 sheet, 每行一首待制作歌曲(序号/分类/歌曲名/链接/时长/状态/上线日期/备注)
+function exportXlsx(){
+  const wb=XLSX.utils.book_new();
+  const reuse=Math.min(Math.max(parseFloat($("r_reuse").value)||0,0),0.95);
+  const summary=[["类型","分组","数量(建库,首)","每日更新(首)"]];
+  // ---- feed: 每语言一个 sheet ----
+  const langName={es:"es (MX本地)",pt:"pt (BR本地)",en:"en (PH+MX·BR)"};
+  ["es","pt","en"].forEach(L=>{
+    const head=["序号","语言","曲风","歌曲名","链接","时长(秒)","状态","上线日期","备注"];
+    const aoa=[head]; let idx=1, total=0;
+    document.querySelectorAll(`.rpct[data-lang="${L}"]`).forEach(i=>{
+      const pct=parseFloat(i.value)||0, nm=i.closest(".rrow").querySelector(".rname").value;
+      const cnt=Math.round(LAST.pool[L]*pct/100); total+=cnt;
+      for(let k=0;k<cnt;k++) aoa.push([idx++, L, nm, "", "", "", "待制作", "", ""]);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"]=[{wch:6},{wch:8},{wch:18},{wch:24},{wch:30},{wch:9},{wch:9},{wch:12},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, ws, "feed_"+L);
+    summary.push(["feed", langName[L], total, Math.round(LAST.dailyL[L])]);
+  });
+  // ---- 电台: 每分组一个 sheet ----
+  const gn={univ:"通用",MX:"MX特有",PH:"PH特有",BR:"BR特有"};
+  ["univ","MX","PH","BR"].forEach(g=>{
+    const head=["序号","电台","歌曲名","链接","时长(秒)","状态","上线日期","备注"];
+    const aoa=[head]; let idx=1, total=0, dsum=0;
+    document.querySelectorAll(`.rsong[data-grp="${g}"]`).forEach(s=>{
+      const row=s.closest(".rrow"), nm=row.querySelector(".rname").value;
+      const songs=parseFloat(s.value)||0, week=parseFloat(row.querySelector(".rweek").value)||0;
+      const cnt=Math.round(songs*(1-reuse)); total+=cnt; dsum+=week/7;
+      for(let k=0;k<cnt;k++) aoa.push([idx++, nm, "", "", "", "待制作", "", ""]);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"]=[{wch:6},{wch:20},{wch:24},{wch:30},{wch:9},{wch:9},{wch:12},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, ws, "radio_"+gn[g]);
+    summary.push(["radio", gn[g], total, Math.round(dsum)]);
+  });
+  // ---- 汇总 sheet (放最前) ----
+  const ws0=XLSX.utils.aoa_to_sheet(summary);
+  ws0["!cols"]=[{wch:8},{wch:14},{wch:16},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws0, "汇总");
+  wb.SheetNames.unshift(wb.SheetNames.pop());  // 把汇总移到最前
+  XLSX.writeFile(wb, "供给排产表.xlsx");
+}
+$("exportCsv").addEventListener("click",()=>{
+  if(typeof XLSX!=="undefined"){ exportXlsx(); return; }
+  // 离线无法加载组件时回退 CSV
+  const blob=new Blob(["﻿"+buildCSV()],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="供给排产表.csv"; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+});
+
+ids.forEach(i=>$(i).addEventListener("input",calc));
+$("reset").addEventListener("click",()=>{ ids.forEach(i=>$(i).value=defaults[i]); renderRadioEditor(); renderGenreEditor(); calc(); });
+renderRadioEditor();
+renderGenreEditor();
+calc();
+</script>
+</body>
+</html>
