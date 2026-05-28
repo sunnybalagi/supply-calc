@@ -101,8 +101,8 @@
 
       <div class="grp">
         <div class="grp-title">全局</div>
-        <div class="row"><label>总预算 / 天 ($)</label><input type="number" id="budget" value="5000" step="500"></div>
-        <div class="row"><label>非收藏曝光占比</label><input type="number" id="nonfav" value="0.85" step="0.05" min="0" max="1"></div>
+        <div class="row"><label>总预算 / 天 ($)</label><input type="number" id="budget" value="10000" step="500"></div>
+        <div class="row"><label>非收藏曝光占比</label><input type="number" id="nonfav" value="0.90" step="0.05" min="0" max="1"></div>
         <div class="row"><label>非收藏去重窗口 (天)</label><input type="number" id="W" value="7" step="1"></div>
         <div class="row"><label>分发集中程度</label><input type="number" id="conc" value="40" step="5" min="1"></div>
         <div class="subnote">每首歌日均曝光次数 · 实测 MX 42 / PH 38 · 越高越集中、需备内容越少</div>
@@ -128,12 +128,12 @@
               <td><input type="number" id="mx_d1" value="10" step="1"></td>
               <td><input type="number" id="mx_w" value="4.0" step="0.1"></td></tr>
             <tr><td>PH-en</td>
-              <td><input type="number" id="ph_share" value="35" step="5"></td>
+              <td><input type="number" id="ph_share" value="20" step="5"></td>
               <td><input type="number" id="ph_cpa" value="0.28" step="0.01"></td>
               <td><input type="number" id="ph_d1" value="10" step="1"></td>
               <td><input type="number" id="ph_w" value="5.4" step="0.1"></td></tr>
             <tr><td>BR-pt</td>
-              <td><input type="number" id="br_share" value="25" step="5"></td>
+              <td><input type="number" id="br_share" value="40" step="5"></td>
               <td><input type="number" id="br_cpa" value="0.41" step="0.01"></td>
               <td><input type="number" id="br_d1" value="10" step="1"></td>
               <td><input type="number" id="br_w" value="4.0" step="0.1"></td></tr>
@@ -232,7 +232,7 @@
 
       <div class="card" style="margin-top:14px;">
         <table><caption>feed 曲风排产（占比 × 语言池）</caption>
-          <thead><tr><th>语言 / 曲风</th><th>占比</th><th>建库(首)</th><th>每日更新</th></tr></thead>
+          <thead><tr><th>语言 / 曲风</th><th>占比</th><th>冷启动(首)</th><th>稳态建库(首)</th><th>每日补充</th></tr></thead>
           <tbody id="genreBody"></tbody>
         </table>
         <div class="subnote" id="genreWarn" style="display:none;color:#b45309;">⚠ 有语言池曲风占比之和 ≠ 100%</div>
@@ -266,7 +266,7 @@ ids.forEach(i=>defaults[i]=$(i).value);
 
 const fmt = n => Math.round(n).toLocaleString("en-US");
 const fmt1 = n => (Math.round(n*10)/10).toLocaleString("en-US");
-let LAST = {pool:{es:0,pt:0,en:0}, dailyL:{es:0,pt:0,en:0}};
+let LAST = {pool:{es:0,pt:0,en:0}, poolInit:{es:0,pt:0,en:0}, dailyL:{es:0,pt:0,en:0}};
 
 function calc(){
   const v = id => parseFloat($(id).value)||0;
@@ -367,8 +367,8 @@ function calc(){
   });
   rb.innerHTML+=`<tr style="font-weight:700"><td>电台合计</td><td>${fmt(cntG("univ")+cntG("MX")+cntG("PH")+cntG("BR"))}</td><td>${fmt(radioBuild)}</td><td>${fmt(radioDaily)}</td></tr>`;
 
-  // ===== feed 曲风排产 =====
-  LAST.pool={es:pool.es,pt:pool.pt,en:pool.en}; LAST.dailyL={es:dailyL.es,pt:dailyL.pt,en:dailyL.en};
+  // ===== feed 曲风排产 (冷启动 + 稳态 + 每日补充) =====
+  LAST.pool={es:pool.es,pt:pool.pt,en:pool.en}; LAST.poolInit={es:poolInit.es,pt:poolInit.pt,en:poolInit.en}; LAST.dailyL={es:dailyL.es,pt:dailyL.pt,en:dailyL.en};
   const scopeL={es:"es (MX本地)",pt:"pt (BR本地)",en:"en (PH+MX/BR)"};
   const gbd=$("genreBody"); gbd.innerHTML=""; let gWarn=false;
   ["es","pt","en"].forEach(L=>{
@@ -377,10 +377,11 @@ function calc(){
     if(Math.abs(psum-100)>0.5) gWarn=true;
     ins.forEach(i=>{
       const pct=parseFloat(i.value)||0, nm=i.closest(".rrow").querySelector(".rname").value;
-      gbd.innerHTML+=`<tr><td><span style="color:#9ca3af;font-size:11px">${L}</span> ${nm}</td><td>${fmt1(pct)}%</td><td><b class="num">${fmt(pool[L]*pct/100)}</b></td><td><b class="num">${fmt(dailyL[L]*pct/100)}</b></td></tr>`;
+      gbd.innerHTML+=`<tr><td><span style="color:#9ca3af;font-size:11px">${L}</span> ${nm}</td><td>${fmt1(pct)}%</td><td><b class="num">${fmt(poolInit[L]*pct/100)}</b></td><td><b class="num">${fmt(pool[L]*pct/100)}</b></td><td><b class="num">${fmt(dailyL[L]*pct/100)}</b></td></tr>`;
     });
-    gbd.innerHTML+=`<tr style="font-weight:700;background:#f3f4f6"><td>${scopeL[L]} 小计</td><td>${fmt1(psum)}%</td><td>${fmt(pool[L])}</td><td>${fmt(dailyL[L])}</td></tr>`;
+    gbd.innerHTML+=`<tr style="font-weight:700;background:#f3f4f6"><td>${scopeL[L]} 小计</td><td>${fmt1(psum)}%</td><td>${fmt(poolInit[L])}</td><td>${fmt(pool[L])}</td><td>${fmt(dailyL[L])}</td></tr>`;
   });
+  gbd.innerHTML+=`<tr style="font-weight:800;background:#d4edda;color:#155724"><td>feed 合计</td><td></td><td>${fmt(buildCold)}</td><td>${fmt(build)}</td><td>${fmt(daily)}</td></tr>`;
   $("genreWarn").style.display=gWarn?"block":"none";
 
   // ===== 总计：冷启动建库 + 每日补充 (电台一次性建齐, 不随DAU变) =====
@@ -402,10 +403,10 @@ function calc(){
 
 // ===== 电台可增删清单 =====
 const radioGroups = [
-  {grp:"univ", title:"通用台（跨国共享，产一次）", items:["睡眠","专注 / 学习","健身","Chill / Lo-fi","浪漫","派对","驾车","器乐放松"]},
-  {grp:"MX", title:"MX 特有", items:["Regional Mexicano","Corridos / Banda","Cumbia","Reggaeton / Latin Pop","Románticas"]},
-  {grp:"PH", title:"PH 特有", items:["OPM","Tagalog Ballads","Pinoy Hip-hop / R&B","P-pop","传统"]},
-  {grp:"BR", title:"BR 特有", items:["Funk","Gospel","Sertanejo","Pagode / Samba","MPB / Pop Nacional"]}
+  {grp:"univ", title:"通用台（跨国共享，产一次）", items:["睡眠","健身","focus","派对","驾车"]},
+  {grp:"MX", title:"MX 特有", items:["Regional Mexicano","Corridos / Banda","Románticas"]},
+  {grp:"PH", title:"PH 特有", items:[]},
+  {grp:"BR", title:"BR 特有", items:["Gospel","Phonk"]}
 ];
 const DEFAULT_SONGS = 100, DEFAULT_WEEK = 5;
 function makeRow(grp,name,songs,week){
@@ -439,9 +440,25 @@ function renderRadioEditor(){
 
 // ===== feed 曲风分配可增删清单 =====
 const genreGroups = [
-  {lang:"es", title:"es (MX本地)"},
-  {lang:"pt", title:"pt (BR本地)"},
-  {lang:"en", title:"en (PH全量 + MX/BR的EN)"}
+  {lang:"es", title:"es (MX本地)", items:[
+    {name:"Corridos Tumbados", pct:61},
+    {name:"Sad Sierreño", pct:9},
+    {name:"Banda / Norteño", pct:10},
+    {name:"Reggaetón / Latin Urban", pct:9},
+    {name:"其他(Cumbia/Pop Español/Rock Latino/Balada/Rap)", pct:11}
+  ]},
+  {lang:"pt", title:"pt (BR本地)", items:[
+    {name:"Gospel", pct:6},
+    {name:"Funk", pct:21},
+    {name:"Sertanejo", pct:61},
+    {name:"Forró", pct:5},
+    {name:"Pagode", pct:6},
+    {name:"其他", pct:1}
+  ]},
+  {lang:"en", title:"en (PH全量 + MX/BR的EN)", items:[
+    {name:"国际抒情情歌 sound-alike", pct:98},
+    {name:"本土英语 R&B", pct:2}
+  ]}
 ];
 function makeGenreRow(lang,name,pct){
   const div=document.createElement("div"); div.className="rrow";
@@ -462,7 +479,7 @@ function renderGenreEditor(){
     hd.innerHTML=`<span style="flex:1">曲风</span><span style="width:54px;text-align:right">占比%</span><span style="width:16px"></span>`;
     sec.appendChild(hd);
     const rows=document.createElement("div");
-    rows.appendChild(makeGenreRow(g.lang,"待定",100));
+    (g.items||[{name:"待定",pct:100}]).forEach(it=>rows.appendChild(makeGenreRow(g.lang,it.name,it.pct)));
     sec.appendChild(rows);
     const add=document.createElement("button"); add.className="raddbtn"; add.textContent="+ 添加曲风";
     add.addEventListener("click",()=>{ rows.appendChild(makeGenreRow(g.lang,"新曲风",0)); calc(); });
